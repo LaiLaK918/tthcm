@@ -1,0 +1,10 @@
+services:
+  legal-va-2-backend-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: legal-va-2-backend
+    env_file:
+      - .env 
+    ports:
+      - "32213:32213"

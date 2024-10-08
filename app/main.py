@@ -15,8 +15,23 @@ from utils.agent_executor import create_agent_executor
 from utils.tools.query import search_similarity
 from langchain.agents import AgentExecutor
 
+from typing import Dict, Optional
+
+
 
 cl_data._data_layer = CustomSQLAlchemyDataLayer(POSTGRES_DATABASE_URL) # type: ignore
+
+@cl.oauth_callback
+def oauth_callback(
+    provider_id: str,
+    token: str,
+    raw_user_data: Dict[str, str],
+    default_user: cl.User,
+) -> Optional[cl.User]:
+    print("raw_user_data", raw_user_data)
+    print("default_user", default_user)
+    default_user.display_name = raw_user_data.get("name")
+    return default_user
 
 @cl.password_auth_callback # type: ignore
 async def auth_callback(username: str, password: str):

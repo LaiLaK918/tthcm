@@ -1,23 +1,17 @@
 from ..client import astra_client
 from ..helpers import generate_embeddings
-from langchain_core.tools import tool
+from langchain_core.tools import tool, InjectedToolArg
 from ..environment import viewd_id
 import random
+from typing import Annotated
 
 
 @tool
-def search_similarity(query: str, limit: int = 20, threshold=0.7, viewd_id: list=viewd_id) -> str:
-    """
-    Searches for documents similar to the given query based on embeddings. Retrieve a fact about Ho Chi Minh to generate a question.
-
-    Args:
-        query (str): The query string to search for similarity.
-        limit (int): The maximum number of documents to return (default is 20).
-        threshold (float): The similarity threshold for document retrieval (default is 0.7).
-
-    Returns:
-        list: A list of documents similar to the query based on the threshold.
-    """
+def search_similarity(query: Annotated[str, "The query string to search for similarity"], 
+                      limit: Annotated[int, "The maximum number of documents to return"] = 20, 
+                      threshold: Annotated[str, "The similarity threshold for document retrieval"] = 0.7, 
+                      viewd_id: Annotated[list, InjectedToolArg] = viewd_id) -> str:
+    """Searches for documents similar to the given query based on embeddings. Retrieve a fact about Ho Chi Minh to generate a question."""
     vector  = generate_embeddings(query)["embeddings"]
     documents = astra_client.find(sort={'$vector': vector}, limit=limit, filter={'_id': {'$nin': viewd_id}}, include_similarity=True)
     ret = []

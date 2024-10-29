@@ -13,10 +13,10 @@ from utils.client import AsyncSessionLocal
 from utils.models import User
 from utils.agent_executor import create_agent_executor
 from utils.tools.query import search_similarity
+from utils.tools.update import update_score, get_total_score
 from langchain.agents import AgentExecutor
-
+from utils.settings import RuntimeConfig, SystemPromptConfig
 from typing import Dict, Optional
-
 
 
 cl_data._data_layer = CustomSQLAlchemyDataLayer(POSTGRES_DATABASE_URL) # type: ignore
@@ -66,12 +66,12 @@ async def auth_callback(username: str, password: str):
 async def chat_profile():
     return [
         cl.ChatProfile(
-            name="Kiến thức tại giáo trình",
+            name=RuntimeConfig.study_mode_name,
             markdown_description="Kiến thực được thu thập trong giáo trình **Tư tuởng Hồ Chí Minh**",
             icon="https://png.pngtree.com/element_pic/17/03/30/d60a84b9aa3a7552ecef9bb5e4ada727.jpg",
         ), 
         cl.ChatProfile(
-            name="Kiến thức mở rộng",
+            name=RuntimeConfig.exam_mode_name,
             markdown_description="Trong giai đoạn phát triển.",
             icon="https://png.pngtree.com/element_pic/17/03/30/d60a84b9aa3a7552ecef9bb5e4ada727.jpg",
         ),
@@ -80,14 +80,22 @@ async def chat_profile():
 @cl.on_chat_start
 async def on_chat_start():
     app_user = cl.user_session.get("user") # type: cl.User
-    cl.user_session.set("runnable", create_agent_executor(tools=[search_similarity]))
-    msg = cl.Message(f"Chào bạn học {app_user.display_name}! Bạn đã sẵn sàng để tìm hiểu về tư tưởng và sự nghiệp vĩ đại của Chủ tịch Hồ Chí Minh chưa? Hãy bắt đầu ngay với những câu hỏi trắc nghiệm thú vị nhé!\n")
+    chat_profile = cl.user_session.get("chat_profile")
+    print(chat_profile, type(chat_profile))
+    if chat_profile == RuntimeConfig.study_mode_name:
+        msg = cl.Message(f"Chào bạn học {app_user.display_name}! Bạn đã sẵn sàng để tìm hiểu về tư tưởng và sự nghiệp vĩ đại của Chủ tịch Hồ Chí Minh chưa? Hãy bắt đầu ngay với những câu hỏi trắc nghiệm thú vị nhé!\n")
+        tools = [search_similarity]
+    elif chat_profile == RuntimeConfig.exam_mode_name:
+        tools = [search_similarity, update_score, get_total_score]
+        cl.user_session.set("score", 0)
+        msg = cl.Message(f"Chào mừng bạn {app_user.display_name} đến với bài kiểm tra kiến thức về tư tưởng và sự nghiệp của Chủ tịch Hồ Chí Minh! Bài kiểm tra này gồm {RuntimeConfig.n_question} câu hỏi nhằm đánh giá mức độ hiểu biết của bạn. Hãy tập trung và trả lời từng câu hỏi thật chính xác nhé. Chúc bạn hoàn thành bài kiểm tra với kết quả xuất sắc!")
     cl.user_session.set("message_history", [{"role": "assistant", "content": msg.content}], )
+    cl.user_session.set("runnable", create_agent_executor(tools=tools, 
+                                                          system_prompt=SystemPromptConfig.get_system_prompt(chat_profile)))
     await msg.send()
 
 @cl.on_message
 async def on_message(message: cl.Message):
-    # await toolcall()
     message_history = cl.user_session.get("message_history") # type: list
     print("message_history", message_history)
     message_history.append({"role": "user", "content": message.content})
@@ -106,21 +114,7 @@ async def on_message(message: cl.Message):
         if kind == "on_chat_model_stream":
             content = event["data"]["chunk"].content
             if content:
-                # Empty content in the context of OpenAI means
-                # that the model is asking for a tool to be invoked.
-                # So we only print non-empty content
-                # print('***')
                 await msg.stream_token(content)
     
-    
-
-    # stream = await client.chat.completions.create(
-    #     messages=message_history, stream=True, **llm_settings
-    # )
-
-    # async for part in stream:
-    #     if token := part.choices[0].delta.content or "":
-    #         await msg.stream_token(token)
-
     message_history.append({"role": "assistant", "content": msg.content})
     await msg.update()

@@ -79,7 +79,7 @@ async def chat_profile():
             
 @cl.on_chat_start
 async def on_chat_start():
-    app_user: cl.User = cl.user_session.get("user") # type: ignore
+    app_user = cl.user_session.get("user") # type: cl.User
     cl.user_session.set("runnable", create_agent_executor(tools=[search_similarity]))
     msg = cl.Message(f"Chào bạn học {app_user.display_name}! Bạn đã sẵn sàng để tìm hiểu về tư tưởng và sự nghiệp vĩ đại của Chủ tịch Hồ Chí Minh chưa? Hãy bắt đầu ngay với những câu hỏi trắc nghiệm thú vị nhé!\n")
     cl.user_session.set("message_history", [{"role": "assistant", "content": msg.content}], )

@@ -1,10 +1,10 @@
 services:
   legal-va-2-backend-app:
     build:
-      context: .
+      context: app
       dockerfile: Dockerfile
-    image: legal-va-2-backend
+    image: harbor.cybertech.com.vn:8443/legal-va/backend-2
     env_file:
-      - .env 
+      - app/.env 
     ports:
       - "32213:80"
